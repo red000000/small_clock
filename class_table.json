@@ -1,0 +1,11 @@
+{
+    "class_list": [
+        {
+            "class_name": "class name",
+            "class_teacher": "class teacher",
+            "class_hour": 22,
+            "class_minute": 9,
+            "class_weekday": 2
+        }
+    ]
+}
