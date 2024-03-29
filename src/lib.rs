@@ -1,13 +1,11 @@
-use chrono::Weekday;
-use chrono::{Datelike, Local, Timelike};
+use chrono::{Datelike, Local, Timelike, Weekday};
 use rodio::Sink;
 use serde::{Deserialize, Serialize};
-use std::fs::File;
-use std::sync::Arc;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use std::{fs, io::BufReader};
+
 #[derive(Serialize, Deserialize)]
 pub struct Class {
     class_name: String,
@@ -25,6 +23,25 @@ impl Class {
             class_minute: 0,
             class_weekday: 0,
         }
+    }
+    pub fn new_from(
+        class_name: String,
+        class_teacher: String,
+        class_hour: u32,
+        class_minute: u32,
+        class_weekday: u32,
+    ) -> Self {
+        Class {
+            class_name,
+            class_teacher,
+            class_hour,
+            class_minute,
+            class_weekday,
+        }
+    }
+    pub fn set(&mut self, class_name: String, class_teacher: String) {
+        self.class_name = class_name;
+        self.class_teacher = class_teacher;
     }
     pub fn get_name(&self) -> &str {
         &self.class_name
@@ -49,8 +66,16 @@ pub struct ClassTable {
     class_list: Vec<Class>,
 }
 impl ClassTable {
+    pub fn new() -> Self {
+        ClassTable {
+            class_list: Vec::new(),
+        }
+    }
     pub fn get_class_list(&self) -> &Vec<Class> {
         &self.class_list
+    }
+    fn add_class(&mut self, class: Class) {
+        self.class_list.push(class);
     }
 }
 pub struct LocalClock {
@@ -87,7 +112,7 @@ impl LocalClock {
     }
     pub fn play_sound(&self) {
         // 打开音频文件
-        let file = File::open(&self.sing_path).expect("Failed to open audio file");
+        let file = fs::File::open(&self.sing_path).expect("Failed to open audio file");
         let source =
             rodio::Decoder::new(BufReader::new(file)).expect("Failed to decode audio file");
 
@@ -133,7 +158,7 @@ impl LocalClock {
                     || self.local_minute > self.class.class_minute
                 {
                     //↑此判断需要修改 2024.3.28，逻辑修改无误后请删除本注释
-                    
+
                     // println!("此线程等待播放音乐已超时，退出,课程名为:{},课程老师为:{}",self.class.get_name(),self.class.get_teacher()); debug
                     break;
                 }
@@ -145,8 +170,8 @@ impl LocalClock {
     }
 }
 pub struct LocalClockTable {
-    pub local_clock_table: Vec<LocalClock>,
-    pub class_table: ClassTable,
+    local_clock_table: Vec<LocalClock>,
+    class_table: ClassTable,
 }
 impl LocalClockTable {
     pub fn new(class_table: ClassTable) -> Self {
@@ -200,4 +225,87 @@ fn weekday_to_u32(weekday: &Weekday) -> u32 {
         Weekday::Sat => 5,
         Weekday::Sun => 6,
     }
+}
+pub fn json_remove_and_write(path: &str, class_table: &ClassTable) {
+    //文件重置后写入，可用
+    //默认需要文件存在，要考虑不存在的情况，待修改2024.3.28，修改确保无误后删除本注释
+    match fs::remove_file(path) {
+        Ok(_) => {}
+        Err(_) => {
+            //文件不存在，无需删除
+        }
+    }
+
+    let file = fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(path)
+        .unwrap();
+    let file_wirter = std::io::BufWriter::new(file);
+    serde_json::to_writer(file_wirter, class_table).unwrap();
+}
+
+//为了防止输入一半而导致的错误，最好处理流输入的错误
+pub fn panel_to_get_classes()-> ClassTable {
+    use std::io;
+
+    let mut class_table = ClassTable::new();
+    println!("Please enter class numbers:");
+    let mut num = String::new();
+    io::stdin()
+        .read_line(&mut num)
+        .expect("Failed to read line");
+    let num: u32 = num.trim().parse().expect("Please enter a number");
+    println!("{}", num);
+
+    for _i in 0..num {
+        get_class(&mut class_table);
+    }
+    class_table
+}
+fn get_class(class_table: &mut ClassTable) {
+    use std::io;
+    println!("Please enter class details:");
+
+    println!("Class name:");
+    let mut name = String::new();
+    io::stdin()
+        .read_line(&mut name)
+        .expect("Failed to read line");
+
+    println!("Class teacher:");
+    let mut teacher = String::new();
+    io::stdin()
+        .read_line(&mut teacher)
+        .expect("Failed to read line");
+
+    println!("Class hour:");
+    let mut hour = String::new();
+    io::stdin()
+        .read_line(&mut hour)
+        .expect("Failed to read line");
+    let hour: u32 = hour.trim().parse().expect("Please enter a number");
+
+    println!("Class minute:");
+    let mut minute = String::new();
+    io::stdin()
+        .read_line(&mut minute)
+        .expect("Failed to read line");
+    let minute: u32 = minute.trim().parse().expect("Please enter a number");
+
+    println!("Class weekday:");
+    let mut weekday = String::new();
+    io::stdin()
+        .read_line(&mut weekday)
+        .expect("Failed to read line");
+    let weekday: u32 = weekday.trim().parse().expect("Please enter a number");
+
+    let class_instance = Class::new_from(
+        name.trim().to_string(),
+        teacher.trim().to_string(),
+        hour,
+        minute,
+        weekday,
+    );
+    class_table.add_class(class_instance);
 }
