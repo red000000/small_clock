@@ -1,6 +1,8 @@
 use chrono::{Datelike, Local, Timelike, Weekday};
 use rodio::Sink;
 use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -78,6 +80,14 @@ impl ClassTable {
         self.class_list.push(class);
     }
 }
+impl Clone for ClassTable {
+    fn clone(&self) -> Self {
+        ClassTable {
+            class_list: self.class_list.clone(),
+        }
+    }
+}
+
 pub struct LocalClock {
     local_hour: u32,
     local_minute: u32,
@@ -245,25 +255,8 @@ pub fn json_remove_and_write(path: &str, class_table: &ClassTable) {
     serde_json::to_writer(file_wirter, class_table).unwrap();
 }
 
-//为了防止输入一半而导致的错误，最好处理流输入的错误
-pub fn panel_to_get_classes()-> ClassTable {
-    use std::io;
-
-    let mut class_table = ClassTable::new();
-    println!("Please enter class numbers:");
-    let mut num = String::new();
-    io::stdin()
-        .read_line(&mut num)
-        .expect("Failed to read line");
-    let num: u32 = num.trim().parse().expect("Please enter a number");
-    println!("{}", num);
-
-    for _i in 0..num {
-        get_class(&mut class_table);
-    }
-    class_table
-}
-fn get_class(class_table: &mut ClassTable) {
+//废弃命令行输入
+/* fn get_class(class_table: &mut ClassTable) {
     use std::io;
     println!("Please enter class details:");
 
@@ -308,4 +301,123 @@ fn get_class(class_table: &mut ClassTable) {
         weekday,
     );
     class_table.add_class(class_instance);
+} */
+//待修改，gui界面
+pub fn panel_to_get_classes() -> ClassTable {
+    use fltk::{app, button::Button, enums::Color, group::Group, input::Input, prelude::*, window};
+
+    let class_table = Rc::new(RefCell::new(ClassTable::new()));
+    let class_table_clone = Rc::clone(&class_table);
+    let app = app::App::default();
+    // 创建窗口
+    let mut wind = window::Window::new(100, 100, 400, 300, "课程信息输入");
+    wind.set_color(Color::Black);
+
+    // 创建面板
+    let mut panel = Group::new(10, 10, 380, 280, "");
+    panel.set_color(Color::Black);
+
+    // 课程名称输入
+    let class_name_input = Rc::new(RefCell::new(Input::new(80, 30, 300, 30, "课程名称")));
+    class_name_input
+        .as_ref()
+        .borrow_mut()
+        .set_color(Color::White);
+    class_name_input
+        .as_ref()
+        .borrow_mut()
+        .set_label_color(Color::White);
+    let class_name_input_clone = Rc::clone(&class_name_input);
+    // 教师输入
+    let teacher_input = Rc::new(RefCell::new(Input::new(80, 70, 300, 30, "教师")));
+    teacher_input.as_ref().borrow_mut().set_color(Color::White);
+    teacher_input
+        .as_ref()
+        .borrow_mut()
+        .set_label_color(Color::White);
+    let teacher_input_clone = Rc::clone(&teacher_input);
+
+    // 课时输入
+    let hour_input = Rc::new(RefCell::new(Input::new(80, 110, 100, 30, "课时")));
+    hour_input.as_ref().borrow_mut().set_color(Color::White);
+    hour_input
+        .as_ref()
+        .borrow_mut()
+        .set_label_color(Color::White);
+    let hour_input_clone = Rc::clone(&hour_input);
+
+    // 分钟输入
+    let minute_input = Rc::new(RefCell::new(Input::new(220, 110, 100, 30, "分钟")));
+    minute_input.as_ref().borrow_mut().set_color(Color::White);
+    minute_input
+        .as_ref()
+        .borrow_mut()
+        .set_label_color(Color::White);
+    let minute_input_clone = Rc::clone(&minute_input);
+
+    // 周末选择
+    let weekday_input = Rc::new(RefCell::new(Input::new(80, 150, 100, 30, "周末")));
+    weekday_input.as_ref().borrow_mut().set_color(Color::White);
+    weekday_input
+        .as_ref()
+        .borrow_mut()
+        .set_label_color(Color::White);
+    let weekday_input_clone = Rc::clone(&weekday_input);
+
+    // 提交按钮
+    let mut submit_button = Button::new(160, 200, 100, 50, "提交单个课程");
+    submit_button.set_color(Color::White);
+
+    let mut submit_all_button = Button::new(270, 200, 100, 50, "提交课表完成");
+    submit_all_button.set_color(Color::White);
+
+    // 显示窗口
+    wind.end();
+    wind.show();
+
+    // 事件处理,待修改
+    submit_button.set_callback(move |_| {
+        let class_name = class_name_input_clone.as_ref().borrow().value();
+        let teacher = teacher_input_clone.as_ref().borrow().value();
+        let hour = hour_input_clone.as_ref().borrow().value();
+        let minute = minute_input_clone.as_ref().borrow().value();
+        let weekday = weekday_input_clone.as_ref().borrow().value();
+        //判断是否为空
+        if class_name.is_empty()
+            || teacher.is_empty()
+            || hour.is_empty()
+            || minute.is_empty()
+            || weekday.is_empty()
+        {
+            fltk::dialog::alert(200, 200, "不允许有空的信息");
+            return;
+        }
+        let hour = hour.parse::<u32>().unwrap_or(0);
+        let minute = minute.parse::<u32>().unwrap_or(0);
+        let weekday = weekday.parse::<u32>().unwrap_or(0);
+        class_table_clone
+            .as_ref()
+            .borrow_mut()
+            .add_class(Class::new_from(class_name, teacher, hour, minute, weekday));
+        //清除输入
+        class_name_input_clone.as_ref().borrow_mut().set_value("");
+        teacher_input_clone.as_ref().borrow_mut().set_value("");
+        hour_input_clone.as_ref().borrow_mut().set_value("");
+        minute_input_clone.as_ref().borrow_mut().set_value("");
+        weekday_input_clone.as_ref().borrow_mut().set_value("");
+    });
+    submit_all_button.set_callback(move |_| {
+        class_name_input.as_ref().borrow_mut().set_value("");
+        teacher_input.as_ref().borrow_mut().set_value("");
+        hour_input.as_ref().borrow_mut().set_value("");
+        minute_input.as_ref().borrow_mut().set_value("");
+        weekday_input.as_ref().borrow_mut().set_value("");
+        app.quit();
+    });
+    app.run().unwrap();
+    if app::event() == fltk::enums::Event::Released {
+        class_table.as_ref().borrow_mut().clone()
+    } else {
+        ClassTable::new()
+    }
 }
