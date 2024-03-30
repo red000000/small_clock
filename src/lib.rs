@@ -190,7 +190,7 @@ impl LocalClockTable {
             class_table: class_table,
         }
     }
-    pub fn add_local_clock(&mut self, sing_path: String) {
+    pub fn add_local_clocks(&mut self, sing_path: String) {
         //几个课表对应几个闹钟
         for class in self.class_table.get_class_list() {
             let mut local_clock = LocalClock::new(sing_path.clone());
@@ -238,7 +238,6 @@ fn weekday_to_u32(weekday: &Weekday) -> u32 {
 }
 pub fn json_remove_and_write(path: &str, class_table: &ClassTable) {
     //文件重置后写入，可用
-    //默认需要文件存在，要考虑不存在的情况，待修改2024.3.28，修改确保无误后删除本注释
     match fs::remove_file(path) {
         Ok(_) => {}
         Err(_) => {
@@ -254,54 +253,6 @@ pub fn json_remove_and_write(path: &str, class_table: &ClassTable) {
     let file_wirter = std::io::BufWriter::new(file);
     serde_json::to_writer(file_wirter, class_table).unwrap();
 }
-
-//废弃命令行输入
-/* fn get_class(class_table: &mut ClassTable) {
-    use std::io;
-    println!("Please enter class details:");
-
-    println!("Class name:");
-    let mut name = String::new();
-    io::stdin()
-        .read_line(&mut name)
-        .expect("Failed to read line");
-
-    println!("Class teacher:");
-    let mut teacher = String::new();
-    io::stdin()
-        .read_line(&mut teacher)
-        .expect("Failed to read line");
-
-    println!("Class hour:");
-    let mut hour = String::new();
-    io::stdin()
-        .read_line(&mut hour)
-        .expect("Failed to read line");
-    let hour: u32 = hour.trim().parse().expect("Please enter a number");
-
-    println!("Class minute:");
-    let mut minute = String::new();
-    io::stdin()
-        .read_line(&mut minute)
-        .expect("Failed to read line");
-    let minute: u32 = minute.trim().parse().expect("Please enter a number");
-
-    println!("Class weekday:");
-    let mut weekday = String::new();
-    io::stdin()
-        .read_line(&mut weekday)
-        .expect("Failed to read line");
-    let weekday: u32 = weekday.trim().parse().expect("Please enter a number");
-
-    let class_instance = Class::new_from(
-        name.trim().to_string(),
-        teacher.trim().to_string(),
-        hour,
-        minute,
-        weekday,
-    );
-    class_table.add_class(class_instance);
-} */
 //待修改，gui界面
 pub fn panel_to_get_classes() -> ClassTable {
     use fltk::{app, button::Button, enums::Color, group::Group, input::Input, prelude::*, window};
@@ -355,8 +306,8 @@ pub fn panel_to_get_classes() -> ClassTable {
         .set_label_color(Color::White);
     let minute_input_clone = Rc::clone(&minute_input);
 
-    // 周末选择
-    let weekday_input = Rc::new(RefCell::new(Input::new(80, 150, 100, 30, "周末")));
+    // 星期需要进行处理
+    let weekday_input = Rc::new(RefCell::new(Input::new(80, 150, 100, 30, "星期")));
     weekday_input.as_ref().borrow_mut().set_color(Color::White);
     weekday_input
         .as_ref()
