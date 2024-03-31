@@ -333,7 +333,7 @@ pub fn panel_to_get_classes() -> ClassTable {
         let hour = hour_input_clone.as_ref().borrow().value();
         let minute = minute_input_clone.as_ref().borrow().value();
         let weekday = weekday_input_clone.as_ref().borrow().value();
-        //判断是否为空
+        //判断是否为空,不做其他检查了，累
         if class_name.is_empty()
             || teacher.is_empty()
             || hour.is_empty()
@@ -345,7 +345,8 @@ pub fn panel_to_get_classes() -> ClassTable {
         }
         let hour = hour.parse::<u32>().unwrap_or(0);
         let minute = minute.parse::<u32>().unwrap_or(0);
-        let weekday = weekday.parse::<u32>().unwrap_or(0);
+        //星期内部对应规则0-6，外部对应规则1-7
+        let weekday = weekday.parse::<u32>().unwrap_or(0)-1;
         class_table_clone
             .as_ref()
             .borrow_mut()
@@ -370,5 +371,48 @@ pub fn panel_to_get_classes() -> ClassTable {
         class_table.as_ref().borrow_mut().clone()
     } else {
         ClassTable::new()
+    }
+}
+pub fn panel_to_get_music()->std::string::String{
+    use fltk::{app, button::Button, enums::Color, group::Group, input::Input, prelude::*, window};
+    let path=Rc::new(RefCell::new(String::new()));
+    let path_clone=Rc::clone(&path);
+
+    let app = app::App::default();
+    // 创建窗口
+    let mut wind = window::Window::new(100, 100, 400, 300, "看我干啥，输入路径啊");
+    wind.set_color(Color::Black);
+    
+    // 创建面板
+    let mut panel = Group::new(10, 10, 380, 280, "");
+    panel.set_color(Color::Black);
+    
+    //音频路径输入
+    let mut music_path_input = Input::new(80, 30, 300, 30, "音频路径");
+    music_path_input.set_color(Color::White);
+    music_path_input.set_label_color(Color::White);
+
+    let mut submit_button = Button::new(160, 200, 100, 50, "提交");
+    submit_button.set_color(Color::White);
+    
+    wind.end();
+    wind.show();
+    
+    submit_button.set_callback(move |_|{
+        let music_path = music_path_input.value();
+        if music_path.is_empty(){
+            fltk::dialog::alert(200, 200, "不允许有空的信息");
+        }
+        else{
+            path_clone.as_ref().borrow_mut().push_str(music_path.as_str());
+            music_path_input.set_value("");
+            app.quit();
+        }
+    });
+    app.run().unwrap();
+    if app::event() == fltk::enums::Event::Released{
+        path.as_ref().borrow().clone()
+    }else{
+        String::new()
     }
 }
