@@ -346,7 +346,7 @@ pub fn panel_to_get_classes() -> ClassTable {
         let hour = hour.parse::<u32>().unwrap_or(0);
         let minute = minute.parse::<u32>().unwrap_or(0);
         //星期内部对应规则0-6，外部对应规则1-7
-        let weekday = weekday.parse::<u32>().unwrap_or(0)-1;
+        let weekday = weekday.parse::<u32>().unwrap_or(0) - 1;
         class_table_clone
             .as_ref()
             .borrow_mut()
@@ -373,20 +373,21 @@ pub fn panel_to_get_classes() -> ClassTable {
         ClassTable::new()
     }
 }
-pub fn panel_to_get_music()->std::string::String{
+pub fn panel_to_get_music() -> String {
     use fltk::{app, button::Button, enums::Color, group::Group, input::Input, prelude::*, window};
-    let path=Rc::new(RefCell::new(String::new()));
-    let path_clone=Rc::clone(&path);
-
+    let path = Rc::new(RefCell::new(String::new()));
+    let path_clone = Rc::clone(&path);
+    let check=Rc::new(RefCell::new(false));
+    let check_clone=Rc::clone(&check);
     let app = app::App::default();
     // 创建窗口
     let mut wind = window::Window::new(100, 100, 400, 300, "看我干啥，输入路径啊");
     wind.set_color(Color::Black);
-    
+
     // 创建面板
     let mut panel = Group::new(10, 10, 380, 280, "");
     panel.set_color(Color::Black);
-    
+
     //音频路径输入
     let mut music_path_input = Input::new(80, 30, 300, 30, "音频路径");
     music_path_input.set_color(Color::White);
@@ -394,25 +395,74 @@ pub fn panel_to_get_music()->std::string::String{
 
     let mut submit_button = Button::new(160, 200, 100, 50, "提交");
     submit_button.set_color(Color::White);
-    
+
     wind.end();
     wind.show();
-    
-    submit_button.set_callback(move |_|{
+
+    submit_button.set_callback(move |_| {
         let music_path = music_path_input.value();
-        if music_path.is_empty(){
+        if music_path.is_empty() {
             fltk::dialog::alert(200, 200, "不允许有空的信息");
-        }
-        else{
-            path_clone.as_ref().borrow_mut().push_str(music_path.as_str());
-            music_path_input.set_value("");
-            app.quit();
+        } else {
+            if panel_music_path_check(&music_path){
+                *check_clone.as_ref().borrow_mut()=true;
+                path_clone.as_ref().borrow_mut().push_str(music_path.as_str());
+                app.quit();
+            }else{
+                *check_clone.as_ref().borrow_mut()=false;
+                app.quit();
+            }
         }
     });
     app.run().unwrap();
-    if app::event() == fltk::enums::Event::Released{
-        path.as_ref().borrow().clone()
-    }else{
-        String::new()
+
+    if *check.as_ref().borrow()==true{
+        path.as_ref().borrow_mut().clone()
+    }else {
+        panel_to_get_music()
+    }
+}
+pub fn panel_music_path_check(music_path: &String) -> bool {
+    use fltk::{app, button::Button, enums::Color, frame::Frame, group::Group, prelude::*, window};
+    let is_ok = Rc::new(RefCell::new(false));
+    let is_ok_clone1=Rc::clone(&is_ok);
+    let is_ok_clone2=Rc::clone(&is_ok);
+
+    let app = app::App::default();
+    let music_path_lable = format!("音频路径为:{}", music_path);
+    // 创建窗口
+    let mut wind = window::Window::new(100, 100, 400, 300, "看我干啥，输入路径啊");
+    wind.set_color(Color::Black);
+
+    // 创建面板
+    let mut panel = Group::new(10, 10, 380, 280, "");
+    panel.set_color(Color::Black);
+
+    let mut lable = Frame::new(10, 30, 300, 30, music_path_lable.as_str());
+    lable.set_label_color(Color::White);
+
+    let mut ok_button = Button::new(95, 200, 100, 50, "确认");
+    ok_button.set_color(Color::White);
+
+    let mut no_button = Button::new(205, 200, 100, 50, "取消");
+    no_button.set_color(Color::White);
+
+    wind.end();
+    wind.show();
+
+    ok_button.set_callback(move |_| {
+        *is_ok_clone1.as_ref().borrow_mut() = true;
+        app.quit();
+    });
+    no_button.set_callback(move |_| {
+        *is_ok_clone2.as_ref().borrow_mut()=false;
+        app.quit();
+    });
+
+    app.run().unwrap();
+    if *is_ok.as_ref().borrow() == true {
+        true
+    } else {
+        false
     }
 }
